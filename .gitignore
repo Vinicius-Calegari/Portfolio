@@ -1,0 +1,36 @@
+# Credenciais e configuração local
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+.admin-access.txt
+.bootstrap-*
+*.tsbuildinfo
+tmp/
+test-results/
+output/
+
+# Dependências e saídas geradas
+node_modules/
+dist/
+build/
+coverage/
+.vite/
+.sites-runtime/
+supabase/.temp/
+supabase/.branches/
+
+# Dados e cópias de segurança
+backups/
+exports/
+*.dump
+*.backup
+
+# Temporários locais
+*.log
+Thumbs.db
+.DS_Store
+
+# Original recebido preservado localmente.
+/Gemini_Generated_Image_k4jokk4jokk4jokk.jpg
