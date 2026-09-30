@@ -1,0 +1,9 @@
+project_id = "salgados-rosilene"
+[auth]
+enable_signup = false
+site_url = "http://localhost:5173"
+minimum_password_length = 12
+[auth.email]
+enable_signup = false
+[functions.encomendas]
+verify_jwt = true
