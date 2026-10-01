@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Salgados Rosilene | Case técnico — Vinícius Calegari</title>
+  <meta name="description" content="Case técnico do Salgados Rosilene: sistema de encomendas em React, TypeScript e Supabase, com painel administrativo, pagamentos, fiado, agenda, PDFs e deploy real.">
+  <meta name="theme-color" content="#050816">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg:#050816;--card:#0b1223;--line:#7ff2cb26;--a:#7ff2cb;--b:#67d9ff;--text:#f6fbff;--muted:#aebdd0}*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;font-family:Manrope,sans-serif;background:radial-gradient(circle at 12% 8%,#16866b35,transparent 26%),radial-gradient(circle at 88% 18%,#1766a52d,transparent 30%),linear-gradient(180deg,#050816,#071120 55%,#03060d);color:var(--text);line-height:1.65}a{color:inherit;text-decoration:none}.wrap{width:min(1050px,92%);margin:auto}.top{padding:24px 0}.top a{color:var(--a);font-weight:800}.hero{padding:70px 0 45px}.kicker{color:var(--a);text-transform:uppercase;letter-spacing:.18em;font-size:.75rem;font-weight:800}.hero h1{font:800 clamp(2.8rem,7vw,5.6rem)/.95 Sora,sans-serif;letter-spacing:-.06em;max-width:11ch;margin:14px 0 20px}.hero h1 span{background:linear-gradient(90deg,var(--a),var(--b));-webkit-background-clip:text;color:transparent}.hero p{max-width:780px;color:var(--muted);font-size:1.07rem}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:26px}.btn{padding:13px 18px;border-radius:999px;border:1px solid #ffffff18;font-weight:800}.primary{background:linear-gradient(135deg,var(--a),var(--b));color:#03110d;border:0}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:38px 0}.card,.section{background:#0b1223df;border:1px solid #ffffff0d;border-radius:22px}.card{padding:20px}.card small{color:var(--a);font-weight:800;text-transform:uppercase}.card h3{font-family:Sora;margin:8px 0}.card p,.section p,.section li{color:var(--muted)}.section{padding:27px;margin:18px 0}.section h2{font-family:Sora;margin-top:0}.flow{font-family:'JetBrains Mono',monospace;overflow:auto;white-space:pre;padding:20px;border-radius:16px;background:#030711;border:1px solid var(--line);color:#c9d9e5}.tag{display:inline-block;margin:4px 5px 4px 0;padding:6px 9px;border-radius:999px;background:#7ff2cb0c;border:1px solid var(--line);color:var(--a);font-size:.74rem;font-weight:800}footer{padding:45px 0;color:#7e8da3}@media(max-width:760px){.grid{grid-template-columns:1fr}.hero{padding-top:35px}}
+  </style>
+</head>
+<body>
+  <div class="wrap top"><a href="/">← Voltar ao portfólio</a></div>
+  <main class="wrap">
+    <section class="hero">
+      <span class="kicker">Case técnico • Full Stack</span>
+      <h1>Salgados <span>Rosilene.</span></h1>
+      <p>Sistema de encomendas criado para substituir controles manuais por um fluxo único de catálogo, pedido, pagamento, agenda e operação administrativa. O frontend usa React/TypeScript e as regras críticas ficam no Supabase, com Postgres, Auth, Storage, RLS e Edge Functions.</p>
+      <div class="actions">
+        <a class="btn primary" href="https://salgados-rosilene-production.up.railway.app" target="_blank" rel="noopener">Abrir produção ↗</a>
+        <a class="btn" href="https://github.com/Vinicius-Calegari/Portfolio/tree/salgados-rosilene" target="_blank" rel="noopener">Ver código ↗</a>
+      </div>
+    </section>
+
+    <div class="grid">
+      <div class="card"><small>Problema</small><h3>Operação fragmentada</h3><p>Pedidos, valores, clientes, agenda e cobranças precisavam coexistir sem depender de anotações paralelas.</p></div>
+      <div class="card"><small>Decisão</small><h3>Regra no servidor</h3><p>O navegador coleta a intenção; o backend recalcula preços, valida datas, limites, crédito e persistência.</p></div>
+      <div class="card"><small>Produção</small><h3>Deploy verificável</h3><p>GitHub Actions executa type-check, testes e build. A aplicação roda no Railway conectada ao Supabase.</p></div>
+    </div>
+
+    <section class="section">
+      <h2>Arquitetura</h2>
+      <div class="flow">Cliente / Admin
+       ↓
+React + TypeScript + Vite
+       ↓
+Supabase JS
+       ↓
+Edge Functions ──→ validações / cálculo / pedidos
+       ↓
+PostgreSQL + RLS + Auth + Storage
+       ↓
+Railway (frontend em produção)</div>
+    </section>
+
+    <section class="section">
+      <h2>Funcionalidades implementadas</h2>
+      <p>
+        <span class="tag">Catálogo</span><span class="tag">Centos mistos</span><span class="tag">Pix</span><span class="tag">Dinheiro</span><span class="tag">Fiado</span><span class="tag">Entrega</span><span class="tag">Retirada</span><span class="tag">Painel Admin</span><span class="tag">Clientes</span><span class="tag">Agenda</span><span class="tag">PDFs A4</span><span class="tag">CSV</span><span class="tag">Backup</span><span class="tag">RLS</span><span class="tag">CI</span>
+      </p>
+      <ul>
+        <li>Preço recalculado e congelado no servidor no momento do pedido.</li>
+        <li>Pedido para o mesmo dia permitido quando ainda existe horário futuro disponível — sem exigência fixa de 3 dias.</li>
+        <li>Validação de datas bloqueadas, capacidade diária e antecedência máxima.</li>
+        <li>Fluxo de fiado condicionado à autorização do cliente.</li>
+        <li>Mensagens de WhatsApp preparadas para revisão e envio humano.</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>Compatibilidade e robustez</h2>
+      <p>O bundle mira Chrome, Edge, Firefox e Safari, incluindo iPhone/iPad. Foram adicionados fallbacks para UUID, Clipboard, manipulação de imagens e modais para reduzir dependência de APIs exclusivas de navegadores Chromium recentes.</p>
+      <p>O CI da branch executa TypeScript, testes e build em Linux antes da publicação. O deploy usa variáveis públicas do Supabase configuradas na infraestrutura, mantendo credenciais privadas fora do GitHub.</p>
+    </section>
+  </main>
+  <footer><div class="wrap">© 2026 Vinícius Calegari — software, dados e automação.</div></footer>
+</body>
+</html>
