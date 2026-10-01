@@ -1,31 +1,31 @@
 # Portfólio — Vinícius Calegari
 
-Meu portfólio pessoal.
+Meu portfólio pessoal como desenvolvedor **Front-end** e estudante de Engenharia de Controle e Automação na UFLA.
 
-Sou Técnico em Informática e estudante de Engenharia de Controle e Automação na UFLA. Este projeto reúne um pouco da minha trajetória, do que estou estudando, da forma como penso software e dos projetos que venho desenvolvendo.
+O site reúne minha trajetória, o que estou estudando, a forma como penso projetos e alguns sistemas que venho desenvolvendo.
 
 ## Online
 
 https://viniciuscalegari.netlify.app
 
-## O que aparece no site
+## Foco
 
-- minha trajetória em TI e na graduação;
-- como penso software, da ideia até a melhoria contínua;
-- projetos que mais me ensinaram;
-- o que estou estudando agora;
-- tecnologias com que já trabalhei.
+Meu foco profissional é **Front-end**, principalmente com React, TypeScript e JavaScript.
+
+Nos projetos também já trabalhei com backend, banco de dados e deploy. Esses conhecimentos aparecem no portfólio como parte do processo de entender melhor as aplicações de ponta a ponta, não como minha especialidade principal.
 
 ## Projetos apresentados
 
-- CapitalSync
-- MS Barbearia
 - AtmosIQ
-- SmartGate Arduino
 - Salgados Rosilene
+- MS Barbearia
+- CapitalSync
+- SmartGate Arduino
 
 ## Tecnologias
 
-C#/.NET · React · TypeScript · JavaScript · PHP · Bootstrap · MySQL · PostgreSQL · Supabase · Git · GitHub Actions · Arduino/C++
+**Front-end:** React · TypeScript · JavaScript · HTML · CSS · Bootstrap
 
-O objetivo do site não é substituir os READMEs técnicos dos repositórios. Os detalhes de arquitetura, instalação e implementação ficam no GitHub de cada projeto.
+**Outras tecnologias que já usei:** C#/.NET · PHP · MySQL · PostgreSQL · Supabase · Git · GitHub Actions · Arduino/C++
+
+Os detalhes de arquitetura, instalação e implementação ficam nos READMEs de cada projeto no GitHub.
