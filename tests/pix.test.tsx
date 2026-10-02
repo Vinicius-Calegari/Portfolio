@@ -54,6 +54,32 @@ afterEach(async () => {
 });
 
 describe("QR Code e Pix copia e cola", () => {
+  it("normaliza a chave de celular cadastrada antes de gerar a imagem e copiar", async () => {
+    await act(async () => {
+      root.render(
+        <Pix
+          pedido={pedido}
+          config={{
+            ...config,
+            pix_chave: "31987654321",
+            whatsapp: "5531987654321",
+          }}
+        />,
+      );
+    });
+    const payload = (document.querySelector("textarea") as HTMLTextAreaElement)
+      .value;
+    expect(payload).toContain("0114+5531987654321");
+    expect(document.body.textContent).toContain("Chave: +5531987654321");
+    expect(QRCode.toDataURL).toHaveBeenCalledWith(payload, {
+      width: 280,
+      margin: 4,
+    });
+    await act(async () =>
+      (document.querySelector("button") as HTMLButtonElement).click(),
+    );
+    expect(copyText).toHaveBeenCalledWith(payload);
+  });
   it("usa o total final com frete no mesmo código para QR e cópia", async () => {
     await render();
     const payload = pixPayload(

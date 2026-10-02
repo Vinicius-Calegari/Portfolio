@@ -29,7 +29,7 @@ import {
   waLink,
 } from "./domain";
 import type { Config, DraftGrupo, Endereco, Pedido, Produto } from "./domain";
-import { pixPayload } from "./pix";
+import { normalizePixKey, pixPayload } from "./pix";
 import { copyText, safeUuid } from "./browser";
 import { couponDiscount } from "./coupons";
 import type { AppliedCoupon } from "./coupons";
@@ -44,17 +44,22 @@ export function Pix({ pedido, config }: { pedido: Pedido; config: Config }) {
     copied: boolean;
   } | null>(null);
   let payload = "";
+  let key = "";
+  let pixError = "";
   try {
-    if (pedido.frete_modo !== "a_combinar")
+    if (pedido.frete_modo !== "a_combinar" && pedido.total > 0) {
+      key = normalizePixKey(config.pix_chave, config.whatsapp);
       payload = pixPayload(
-        config.pix_chave,
+        key,
         config.pix_nome,
         config.pix_cidade,
         pedido.total,
         `ROS${pedido.numero}`,
       );
-  } catch {
-    /* Payment details remain configurable. */
+    }
+  } catch (e) {
+    pixError =
+      e instanceof Error ? e.message : "Confira os dados do Pix cadastrados.";
   }
   useEffect(() => {
     let active = true;
@@ -79,7 +84,7 @@ export function Pix({ pedido, config }: { pedido: Pedido; config: Config }) {
           ? "O Pix com o valor total estará disponível depois de combinar o frete."
           : pedido.total === 0
             ? "Não há valor a pagar nesta encomenda."
-            : "Combine os dados do Pix pelo WhatsApp."}
+            : pixError || "Combine os dados do Pix pelo WhatsApp."}
       </div>
     );
   return (
@@ -112,7 +117,7 @@ export function Pix({ pedido, config }: { pedido: Pedido; config: Config }) {
       <p>
         <strong>Recebedor:</strong> {config.pix_nome}
         <br />
-        <strong>Chave:</strong> {config.pix_chave}
+        <strong>Chave:</strong> {key}
       </p>
       <label>
         Pix copia e cola
