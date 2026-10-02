@@ -91,6 +91,21 @@ Deno.serve(async (req: Request) => {
         );
       return reply(await geocode(String(data.endereco), mapsKey));
     }
+    const couponCode = String(data.cupom || data.cupom_codigo || "").trim();
+    if (data.pagar_depois && (action === "cupom" || couponCode)) {
+      throw new Error("Cupons não são válidos para pagamento fiado.");
+    }
+    if (action === "cupom") {
+      const r = await service.rpc("validar_cupom", {
+        p_codigo: String(data.codigo || ""),
+        p_subtotal: Number(data.subtotal || 0),
+      });
+      if (r.error) {
+        if (r.error.code === "P0001") throw new Error(r.error.message);
+        throw new Error("Não foi possível validar o cupom.");
+      }
+      return reply(r.data);
+    }
     if (!["frete", "criar", "manual"].includes(action))
       throw new Error("Operação inválida.");
     if (

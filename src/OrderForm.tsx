@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Check,
@@ -31,6 +31,8 @@ import {
 import type { Config, DraftGrupo, Endereco, Pedido, Produto } from "./domain";
 import { pixPayload } from "./pix";
 import { copyText, safeUuid } from "./browser";
+import { couponDiscount } from "./coupons";
+import type { AppliedCoupon } from "./coupons";
 export function Pix({ pedido, config }: { pedido: Pedido; config: Config }) {
   const [qr, setQr] = useState("");
   const [copied, setCopied] = useState(false);
@@ -367,14 +369,62 @@ export default function OrderForm({
   const [credit, setCredit] = useState(false);
   const [frete, setFrete] = useState<Quote | null>(null);
   const [quoteBusy, setQuoteBusy] = useState(false);
+  const [couponInput, setCouponInput] = useState("");
+  const [coupon, setCoupon] = useState<AppliedCoupon | null>(null);
+  const [couponError, setCouponError] = useState("");
+  const [couponBusy, setCouponBusy] = useState(false);
+  const couponRequest = useRef(0);
+  function clearCoupon() {
+    couponRequest.current += 1;
+    setCoupon(null);
+    setCouponInput("");
+    setCouponError("");
+    setCouponBusy(false);
+  }
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => {
+    if (k === "pagar_depois" && v) clearCoupon();
     setForm((f) => ({ ...f, [k]: v }));
     setError("");
   };
   const subtotal = draftTotal(groups, produtos);
-  const total = subtotal + (frete?.valor || 0);
+  const discount = couponDiscount(coupon, subtotal, form.pagar_depois);
+  const total = subtotal + (frete?.valor || 0) - discount;
   const min = today();
   const max = addDays(today(), c.antecedencia_max);
+  useEffect(
+    () => () => {
+      couponRequest.current += 1;
+    },
+    [],
+  );
+  async function applyCoupon() {
+    const code = couponInput.trim().toUpperCase();
+    if (!code || form.pagar_depois) {
+      clearCoupon();
+      return;
+    }
+    const request = ++couponRequest.current;
+    setCouponBusy(true);
+    setCouponError("");
+    try {
+      const result = await edge("cupom", {
+        codigo: code,
+        subtotal,
+        pagar_depois: false,
+      });
+      if (request === couponRequest.current) {
+        setCoupon(result as AppliedCoupon);
+        setCouponInput(result.codigo);
+      }
+    } catch (e) {
+      if (request === couponRequest.current) {
+        setCoupon(null);
+        setCouponError(e instanceof Error ? e.message : "Cupom inválido.");
+      }
+    } finally {
+      if (request === couponRequest.current) setCouponBusy(false);
+    }
+  }
   useEffect(() => {
     if (!loading)
       setGroups((current) =>
@@ -501,6 +551,7 @@ export default function OrderForm({
             : null,
           grupos: groups,
           requisicao_id: rid,
+          cupom: form.pagar_depois ? null : coupon?.codigo || null,
         },
         manual,
       );
@@ -855,6 +906,66 @@ export default function OrderForm({
               ) : (
                 <p className="muted">Pagamento na entrega ou retirada.</p>
               )}
+              {form.pagar_depois ? (
+                <p className="notice">
+                  Cupons não são válidos para pagamento fiado.
+                </p>
+              ) : (
+                <section className="coupon-box" aria-label="Cupom de desconto">
+                  <label htmlFor="coupon-code">
+                    Cupom de desconto <small>(opcional)</small>
+                  </label>
+                  <div className="coupon-controls">
+                    <input
+                      id="coupon-code"
+                      placeholder="Digite seu cupom"
+                      maxLength={30}
+                      autoCapitalize="characters"
+                      autoComplete="off"
+                      value={couponInput}
+                      disabled={couponBusy || !!coupon || busy}
+                      onChange={(e) => {
+                        setCouponInput(e.target.value.toUpperCase());
+                        setCouponError("");
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          if (!couponBusy && !coupon) void applyCoupon();
+                        }
+                      }}
+                    />
+                    {coupon ? (
+                      <button
+                        type="button"
+                        className="button secondary"
+                        onClick={clearCoupon}
+                        disabled={busy}
+                      >
+                        Remover
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="button secondary"
+                        onClick={() => void applyCoupon()}
+                        disabled={couponBusy || busy || !couponInput.trim()}
+                      >
+                        {couponBusy ? "Validando…" : "Aplicar"}
+                      </button>
+                    )}
+                  </div>
+                  <div aria-live="polite">
+                    {coupon && (
+                      <p className="coupon-success">
+                        Cupom {coupon.codigo} aplicado: −{money(discount)}.
+                      </p>
+                    )}
+                    {couponError && <ErrorBox text={couponError} />}
+                  </div>
+                  <small>Você pode concluir o pedido sem cupom.</small>
+                </section>
+              )}
               {!manual && (
                 <label className="check consent">
                   <input
@@ -915,7 +1026,7 @@ export default function OrderForm({
               <button
                 className="button"
                 onClick={() => void submit()}
-                disabled={busy}
+                disabled={busy || couponBusy}
               >
                 {busy ? "Salvando pedido…" : "Enviar encomenda"}
               </button>
@@ -965,6 +1076,12 @@ export default function OrderForm({
                         : money(frete.valor)}
               </dd>
             </div>
+            {discount > 0 && (
+              <div className="coupon-success">
+                <dt>Desconto ({coupon?.codigo})</dt>
+                <dd>−{money(discount)}</dd>
+              </div>
+            )}
             <div className="grand-total">
               <dt>
                 {frete?.modo === "a_combinar" ? "Total parcial" : "Total"}

@@ -123,6 +123,8 @@ export interface Pedido {
   observacoes: string;
   status: Status;
   subtotal: number;
+  cupom_codigo?: string | null;
+  desconto?: number;
   frete_valor: number;
   frete_km: number | null;
   frete_modo: "nenhum" | "calculado" | "manual" | "a_combinar";
@@ -232,7 +234,7 @@ export function addressText(a: Endereco | null) {
     : "";
 }
 export function summary(p: Pedido) {
-  return `Pedido #${p.numero} • ${p.nome_cliente}\n${p.grupos_pedido.map((g, i) => `Grupo ${i + 1}: ${g.itens_pedido.map((it) => `${it.quantidade} ${it.nome_produto}`).join(", ")}`).join("\n")}\n${dateBR(p.data_entrega)} às ${p.horario.slice(0, 5)} • ${p.tipo === "entrega" ? "Entrega" : "Retirada"}${p.endereco ? `\n${addressText(p.endereco)}\nReferência: ${p.ponto_referencia}` : ""}\nSalgados: ${money(p.subtotal)}\nFrete: ${p.frete_modo === "a_combinar" ? "a combinar" : money(p.frete_valor)}\n${p.frete_modo === "a_combinar" ? "Total parcial" : "Total"}: ${money(p.total)}\nPagamento: ${p.forma_pagamento === "pix" ? "Pix" : "Dinheiro"}${p.pagar_depois ? ` • fiado até ${dateBR(p.data_prometida_pagamento)}` : " • na entrega/retirada"}${p.precisa_troco ? `\nTroco para ${money(p.troco_para || 0)} (devolver ${money(Math.max(0, (p.troco_para || 0) - p.total))})` : ""}\nSituação: ${p.pago ? "Pago" : "Não pago"}${p.observacoes ? `\nObservações: ${p.observacoes}` : ""}`;
+  return `Pedido #${p.numero} • ${p.nome_cliente}\n${p.grupos_pedido.map((g, i) => `Grupo ${i + 1}: ${g.itens_pedido.map((it) => `${it.quantidade} ${it.nome_produto}`).join(", ")}`).join("\n")}\n${dateBR(p.data_entrega)} às ${p.horario.slice(0, 5)} • ${p.tipo === "entrega" ? "Entrega" : "Retirada"}${p.endereco ? `\n${addressText(p.endereco)}\nReferência: ${p.ponto_referencia}` : ""}\nSalgados: ${money(p.subtotal)}${p.desconto ? `\nCupom ${p.cupom_codigo}: −${money(p.desconto)}` : ""}\nFrete: ${p.frete_modo === "a_combinar" ? "a combinar" : money(p.frete_valor)}\n${p.frete_modo === "a_combinar" ? "Total parcial" : "Total"}: ${money(p.total)}\nPagamento: ${p.forma_pagamento === "pix" ? "Pix" : "Dinheiro"}${p.pagar_depois ? ` • fiado até ${dateBR(p.data_prometida_pagamento)}` : " • na entrega/retirada"}${p.precisa_troco ? `\nTroco para ${money(p.troco_para || 0)} (devolver ${money(Math.max(0, (p.troco_para || 0) - p.total))})` : ""}\nSituação: ${p.pago ? "Pago" : "Não pago"}${p.observacoes ? `\nObservações: ${p.observacoes}` : ""}`;
 }
 export function message(template: string, p: Pedido, pix: string) {
   const vars: Record<string, string> = {
