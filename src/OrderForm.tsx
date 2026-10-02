@@ -34,8 +34,15 @@ import { copyText, safeUuid } from "./browser";
 import { couponDiscount } from "./coupons";
 import type { AppliedCoupon } from "./coupons";
 export function Pix({ pedido, config }: { pedido: Pedido; config: Config }) {
-  const [qr, setQr] = useState("");
-  const [copied, setCopied] = useState(false);
+  const [qr, setQr] = useState<{
+    payload: string;
+    url?: string;
+    error?: boolean;
+  } | null>(null);
+  const [copyStatus, setCopyStatus] = useState<{
+    payload: string;
+    copied: boolean;
+  } | null>(null);
   let payload = "";
   try {
     if (pedido.frete_modo !== "a_combinar")
@@ -50,45 +57,97 @@ export function Pix({ pedido, config }: { pedido: Pedido; config: Config }) {
     /* Payment details remain configurable. */
   }
   useEffect(() => {
+    let active = true;
+    setQr(null);
+    setCopyStatus(null);
     if (payload)
-      void QRCode.toDataURL(payload, { width: 240, margin: 2 }).then(setQr);
+      void QRCode.toDataURL(payload, { width: 280, margin: 4 })
+        .then((url) => {
+          if (active) setQr({ payload, url });
+        })
+        .catch(() => {
+          if (active) setQr({ payload, error: true });
+        });
+    return () => {
+      active = false;
+    };
   }, [payload]);
   if (!payload)
     return (
       <div className="notice">
         {pedido.frete_modo === "a_combinar"
           ? "O Pix com o valor total estará disponível depois de combinar o frete."
-          : "Combine os dados do Pix pelo WhatsApp."}
+          : pedido.total === 0
+            ? "Não há valor a pagar nesta encomenda."
+            : "Combine os dados do Pix pelo WhatsApp."}
       </div>
     );
   return (
     <section className="pix-box">
       <h3>Pagar com Pix</h3>
+      <p className="pix-amount">{money(pedido.total)}</p>
       <p>
-        Você pode pagar agora ou na data combinada. A confirmação é feita pela
-        Rosilene.
+        Escaneie o QR Code no aplicativo do seu banco ou use o Pix copia e cola
+        abaixo.
       </p>
-      {qr && (
-        <img src={qr} width={210} height={210} alt="QR Code Pix do pedido" />
+      {pedido.pagar_depois && (
+        <p>
+          Pagamento combinado para {dateBR(pedido.data_prometida_pagamento)}.
+        </p>
+      )}
+      {qr?.payload === payload && qr.url ? (
+        <img
+          src={qr.url}
+          width={280}
+          height={280}
+          alt="QR Code Pix do pedido"
+        />
+      ) : qr?.payload === payload && qr.error ? (
+        <p role="status">
+          Não foi possível exibir o QR Code. Use o copia e cola abaixo.
+        </p>
+      ) : (
+        <p role="status">Gerando QR Code…</p>
       )}
       <p>
+        <strong>Recebedor:</strong> {config.pix_nome}
+        <br />
         <strong>Chave:</strong> {config.pix_chave}
       </p>
-      <textarea aria-label="Pix copia e cola" readOnly value={payload} />
+      <label>
+        Pix copia e cola
+        <textarea
+          readOnly
+          value={payload}
+          spellCheck={false}
+          onFocus={(e) => e.currentTarget.select()}
+        />
+      </label>
       <button
+        type="button"
         className="button secondary"
         onClick={async () => {
           try {
             await copyText(payload);
-            setCopied(true);
+            setCopyStatus({ payload, copied: true });
           } catch {
-            setCopied(false);
+            setCopyStatus({ payload, copied: false });
           }
         }}
       >
         <Clipboard size={17} />
-        {copied ? "Pix copiado" : "Copiar Pix"}
+        {copyStatus?.payload === payload && copyStatus.copied
+          ? "Pix copiado"
+          : "Copiar Pix"}
       </button>
+      <div aria-live="polite">
+        {copyStatus?.payload === payload && !copyStatus.copied && (
+          <p>
+            Selecione o código acima e copie para colar no aplicativo do banco.
+          </p>
+        )}
+      </div>
+      <p className="muted">A confirmação do pagamento é feita pela Rosilene.</p>
     </section>
   );
 }
@@ -579,6 +638,9 @@ export default function OrderForm({
         <p>
           Seu pedido já está salvo. A confirmação será combinada com a Rosilene.
         </p>
+        {receipt.forma_pagamento === "pix" && (
+          <Pix pedido={receipt} config={c} />
+        )}
         <pre className="order-summary">{summary(receipt)}</pre>
         <a
           className="button"
@@ -589,9 +651,6 @@ export default function OrderForm({
           <MessageCircle size={18} />
           Enviar meu pedido pelo WhatsApp
         </a>
-        {receipt.forma_pagamento === "pix" && (
-          <Pix pedido={receipt} config={c} />
-        )}
         <Link className="text-button" to={manual ? "/painel" : "/"}>
           Voltar ao início
         </Link>
@@ -851,7 +910,10 @@ export default function OrderForm({
                         set("precisa_troco", false);
                       }}
                     />
-                    Pix{!c.pix_chave && <small>Em configuração</small>}
+                    Pix
+                    {(!c.pix_chave || !c.pix_nome) && (
+                      <small>Em configuração</small>
+                    )}
                   </label>
                 </div>
               </fieldset>
@@ -966,6 +1028,13 @@ export default function OrderForm({
                   <small>Você pode concluir o pedido sem cupom.</small>
                 </section>
               )}
+              {!manual && form.forma_pagamento === "pix" && total > 0 && (
+                <p className="notice">
+                  {frete?.modo === "a_combinar"
+                    ? "O QR Code e o Pix copia e cola estarão disponíveis depois de combinar o frete."
+                    : "Ao enviar a encomenda, você verá o QR Code e o Pix copia e cola com o valor final do pedido."}
+                </p>
+              )}
               {!manual && (
                 <label className="check consent">
                   <input
@@ -1028,7 +1097,14 @@ export default function OrderForm({
                 onClick={() => void submit()}
                 disabled={busy || couponBusy}
               >
-                {busy ? "Salvando pedido…" : "Enviar encomenda"}
+                {busy
+                  ? "Salvando pedido…"
+                  : !manual &&
+                      form.forma_pagamento === "pix" &&
+                      total > 0 &&
+                      frete?.modo !== "a_combinar"
+                    ? "Enviar encomenda e ver Pix"
+                    : "Enviar encomenda"}
               </button>
             )}
           </div>

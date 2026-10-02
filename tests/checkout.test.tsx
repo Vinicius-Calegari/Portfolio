@@ -4,15 +4,30 @@ import { createRoot } from "react-dom/client";
 import type { Root } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import QRCode from "qrcode";
 import OrderForm from "../src/OrderForm";
 import { edge } from "../src/api";
+import { copyText } from "../src/browser";
 import { addDays, today } from "../src/domain";
+import { pixPayload } from "../src/pix";
 
 vi.mock("../src/api", () => ({ edge: vi.fn() }));
+vi.mock("qrcode", () => ({ default: { toDataURL: vi.fn() } }));
+vi.mock("../src/browser", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/browser")>()),
+  copyText: vi.fn(),
+}));
 vi.mock("../src/App", async () => {
   const { defaultConfig } = await import("../src/domain");
   const catalog = {
-    config: { ...defaultConfig, recebendo_pedidos: true, fiado_todos: true },
+    config: {
+      ...defaultConfig,
+      recebendo_pedidos: true,
+      fiado_todos: true,
+      pix_chave: "teste@example.com",
+      pix_nome: "ROSILENE",
+      pix_cidade: "FERROS",
+    },
     produtos: [
       {
         id: "teste",
@@ -36,6 +51,13 @@ vi.mock("../src/App", async () => {
     ProductPhoto: () => null,
   };
 });
+
+const generateQr = vi.mocked(
+  QRCode.toDataURL as (
+    text: string,
+    options: { width: number; margin: number },
+  ) => Promise<string>,
+);
 
 const coupon = {
   codigo: "TESTE10",
@@ -100,6 +122,8 @@ const sent = () =>
 beforeEach(async () => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   window.scrollTo = vi.fn();
+  generateQr.mockReset().mockResolvedValue("data:image/png;base64,teste");
+  vi.mocked(copyText).mockReset().mockResolvedValue();
   vi.mocked(edge)
     .mockReset()
     .mockImplementation(async (action, data) => {
@@ -119,7 +143,9 @@ beforeEach(async () => {
           total: order.cupom ? 8100 : 9000,
           frete_modo: "nenhum",
           frete_valor: 0,
-          forma_pagamento: "dinheiro",
+          forma_pagamento: order.forma_pagamento,
+          cupom_codigo: order.cupom,
+          desconto: order.cupom ? 900 : 0,
           pagar_depois: order.pagar_depois,
           data_prometida_pagamento: order.data_prometida_pagamento,
           pago: false,
@@ -148,6 +174,80 @@ beforeEach(async () => {
   await click("Continuar");
   await act(async () => {
     (document.querySelector(".consent input") as HTMLInputElement).click();
+  });
+});
+
+describe("pagamento com Pix", () => {
+  async function choosePix() {
+    await act(async () => {
+      (inputFor("Pix") as HTMLInputElement).click();
+    });
+  }
+  it("mostra QR e copia e cola após salvar, com o desconto confirmado pelo servidor", async () => {
+    await choosePix();
+    expect(document.querySelector(".pix-box")).toBeNull();
+    expect(QRCode.toDataURL).not.toHaveBeenCalled();
+    await fill(document.querySelector("#coupon-code")!, "TESTE10");
+    await click("Aplicar");
+    await click("Enviar encomenda e ver Pix");
+    const code = document.querySelector(
+      ".pix-box textarea",
+    ) as HTMLTextAreaElement;
+    const payload = pixPayload(
+      "teste@example.com",
+      "ROSILENE",
+      "FERROS",
+      8100,
+      "ROS1",
+    );
+    expect(sent().forma_pagamento).toBe("pix");
+    expect(sent().cupom).toBe("TESTE10");
+    expect(code.value).toBe(payload);
+    expect(QRCode.toDataURL).toHaveBeenCalledWith(payload, {
+      width: 280,
+      margin: 4,
+    });
+    expect(document.querySelector(".pix-box img")?.getAttribute("src")).toBe(
+      "data:image/png;base64,teste",
+    );
+    expect(
+      document.querySelector(".pix-amount")?.textContent?.replace(/\s/g, ""),
+    ).toBe("R$81,00");
+    expect(
+      document
+        .querySelector(".pix-box")!
+        .compareDocumentPosition(document.querySelector(".order-summary")!) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    await click("Copiar Pix");
+    expect(copyText).toHaveBeenCalledWith(payload);
+    expect(document.body.textContent).toContain("Pix copiado");
+  });
+  it("não oferece pagamento quando o pedido não foi salvo", async () => {
+    await choosePix();
+    vi.mocked(edge).mockRejectedValueOnce(
+      new Error("Não foi possível salvar."),
+    );
+    await click("Enviar encomenda e ver Pix");
+    expect(document.querySelector(".pix-box")).toBeNull();
+    expect(QRCode.toDataURL).not.toHaveBeenCalled();
+    expect(document.body.textContent).toContain("Não foi possível salvar.");
+  });
+  it("gera Pix sem desconto para fiado e preserva a data combinada", async () => {
+    await choosePix();
+    await fill(document.querySelector("#coupon-code")!, "TESTE10");
+    await click("Aplicar");
+    await toggleCredit();
+    await fill(inputFor("Em que dia você vai pagar?"), addDays(today(), 1));
+    await click("Enviar encomenda e ver Pix");
+    expect(sent().cupom).toBeNull();
+    expect(
+      (document.querySelector(".pix-box textarea") as HTMLTextAreaElement)
+        .value,
+    ).toBe(pixPayload("teste@example.com", "ROSILENE", "FERROS", 9000, "ROS1"));
+    expect(document.querySelector(".pix-box")?.textContent).toContain(
+      "Pagamento combinado para",
+    );
   });
 });
 afterEach(async () => {
