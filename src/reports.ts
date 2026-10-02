@@ -29,8 +29,16 @@ export async function makeReport(
     } catch {
       /* Text-only header remains printable. */
     }
+  if (logo) {
+    try {
+      const image = doc.getImageProperties(logo);
+      if (!image.width || !image.height) logo = undefined;
+    } catch {
+      logo = undefined;
+    }
+  }
   const title = {
-    producao: "Lista de produção",
+    producao: "Lista de produção · checklist",
     periodo: "Pedidos por período",
     individual: "Pedido individual",
     receber: "Contas a receber",
@@ -93,14 +101,34 @@ export async function makeReport(
       .flatMap(([day, items]) =>
         [...items]
           .sort(([a], [b]) => a.localeCompare(b))
-          .map(([name, qty]) => [dateBR(day), name, String(qty)]),
+          .map(([name, qty]) => [dateBR(day), name, String(qty), "", ""]),
       );
     autoTable(doc, {
       ...base,
       startY: 51,
-      head: [["Data", "Salgado", "Unidades"]],
-      body: body.length ? body : [["—", "Nenhum pedido selecionado", "0"]],
-      columnStyles: { 2: { fontSize: 16, fontStyle: "bold", halign: "right" } },
+      head: [["Data", "Salgado", "Unidades", "Feito", "Separado"]],
+      body: body.length
+        ? body
+        : [["—", "Nenhum pedido selecionado", "0", "", ""]],
+      columnStyles: {
+        0: { cellWidth: 24 },
+        2: { cellWidth: 24, fontSize: 16, fontStyle: "bold", halign: "right" },
+        3: { cellWidth: 23, halign: "center" },
+        4: { cellWidth: 25, halign: "center" },
+      },
+      didDrawCell: ({ section, column, cell }) => {
+        if (section === "body" && body.length && column.index >= 3) {
+          const size = 4;
+          doc.setDrawColor("#666666");
+          doc.setLineWidth(0.25);
+          doc.rect(
+            cell.x + (cell.width - size) / 2,
+            cell.y + (cell.height - size) / 2,
+            size,
+            size,
+          );
+        }
+      },
     });
   } else if (kind === "individual") {
     const selected = orders;
