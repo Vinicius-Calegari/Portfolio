@@ -93,16 +93,32 @@ export default function Admin() {
   }, []);
 
   useEffect(() => {
-    void db.auth.getSession().then(async ({ data }) => {
-      if (!data.session) return setSession(false);
-      const check = await db.rpc("sou_admin");
-      setSession(!check.error && !!check.data);
-      if (!check.error && check.data) void load();
-    });
+    let active = true;
+    void (async () => {
+      try {
+        const { data, error } = await db.auth.getSession();
+        if (!active) return;
+        if (error) throw error;
+        if (!data.session) return setSession(false);
+        const check = await db.rpc("sou_admin");
+        if (!active) return;
+        if (check.error) throw check.error;
+        setSession(!!check.data);
+        if (check.data) void load();
+      } catch {
+        if (active) {
+          setSession(false);
+          setError("Não foi possível verificar sua sessão. Tente entrar novamente.");
+        }
+      }
+    })();
     const { data } = db.auth.onAuthStateChange((_event, current) => {
       if (!current) setSession(false);
     });
-    return () => data.subscription.unsubscribe();
+    return () => {
+      active = false;
+      data.subscription.unsubscribe();
+    };
   }, [load]);
 
   async function login(e: React.FormEvent) {
