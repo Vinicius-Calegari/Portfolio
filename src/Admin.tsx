@@ -210,6 +210,21 @@ export default function Admin() {
   );
 }
 
+function OrderWhatsApp({ pedido, config, onClick }: {
+  pedido: Pedido;
+  config: Config;
+  onClick: () => void;
+}) {
+  const text = message(config.mensagem_confirmacao, pedido, config.pix_chave);
+  let href: string;
+  try {
+    href = waLink(pedido.whatsapp, text);
+  } catch {
+    return <button type="button" disabled title="Este pedido não tem um celular válido para contato."><MessageCircle /> WhatsApp indisponível</button>;
+  }
+  return <a href={href} target="_blank" rel="noreferrer" onClick={onClick}><MessageCircle /> WhatsApp</a>;
+}
+
 export function Agenda({ pedidos, all, config, busy, filterDate, setFilterDate, filterStatus, setFilterStatus, filterName, setFilterName, act }: {
   pedidos: Pedido[]; all: Pedido[]; config: Config; busy: boolean;
   filterDate: string; setFilterDate: (v:string)=>void; filterStatus:string; setFilterStatus:(v:string)=>void; filterName:string; setFilterName:(v:string)=>void;
@@ -229,7 +244,7 @@ export function Agenda({ pedidos, all, config, busy, filterDate, setFilterDate, 
     {!pedidos.length ? <Empty title="Nenhum pedido encontrado" /> : <div className="admin-order-list">{pedidos.map((p)=><article className="panel admin-order" key={p.id}>
       <div className="order-head"><div><span className={`status ${p.status}`}>{statuses[p.status]}</span><h3>#{p.numero} · {p.nome_cliente}</h3><p>{dateBR(p.data_entrega)} às {p.horario.slice(0,5)} · {p.tipo === "entrega" ? "Entrega" : "Retirada"}</p></div><strong>{money(p.total)}{p.frete_modo === "a_combinar" ? " + frete" : ""}</strong></div>
       <div className="order-items">{p.grupos_pedido.map((g,n)=><p key={g.id || n}><b>Grupo {n+1}:</b> {g.itens_pedido.map(i=>`${i.quantidade} ${i.nome_produto}`).join(", ")}</p>)}</div>
-      <p><b>{maskPhone(p.whatsapp)}</b> · {p.forma_pagamento === "pix" ? "Pix" : "Dinheiro"} · {p.pago ? "Pago" : "Não pago"}</p>
+      <p><b>{maskPhone(p.whatsapp) || "Sem telefone"}</b> · {p.forma_pagamento === "pix" ? "Pix" : "Dinheiro"} · {p.pago ? "Pago" : "Não pago"}</p>
       {p.observacoes && <p className="muted">{p.observacoes}</p>}
       <div className="order-actions">
         {p.status !== "confirmado" && p.status !== "cancelado" && <button disabled={busy} onClick={()=>void act(p,"status",{status:"confirmado"})}><CheckCircle2 /> Confirmar</button>}
@@ -237,7 +252,7 @@ export function Agenda({ pedidos, all, config, busy, filterDate, setFilterDate, 
         {!p.pago && <button disabled={busy} onClick={()=>void act(p,"pagamento",{pago:true})}>Marcar pago</button>}
         {p.forma_pagamento === "pix" && !p.pago && p.status !== "cancelado" && <button type="button" onClick={()=>setPixOrder(pixOrder === p.id ? null : p.id)}>{pixOrder === p.id ? "Ocultar Pix" : "Ver Pix"}</button>}
         {p.pago && <button disabled={busy} onClick={()=>void act(p,"pagamento",{pago:false})}>Desmarcar pago</button>}
-        <a href={waLink(p.whatsapp,message(config.mensagem_confirmacao,p,config.pix_chave))} target="_blank" rel="noreferrer" onClick={()=>{if(p.status==="pendente") void act(p,"status",{status:"aguardando_confirmacao"});}}><MessageCircle /> WhatsApp</a>
+        <OrderWhatsApp pedido={p} config={config} onClick={()=>{if(p.status==="pendente") void act(p,"status",{status:"aguardando_confirmacao"});}} />
       </div>
       {pixOrder === p.id && p.forma_pagamento === "pix" && !p.pago && p.status !== "cancelado" && <Pix pedido={p} config={config} />}
     </article>)}</div>}

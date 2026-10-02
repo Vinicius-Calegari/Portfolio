@@ -141,6 +141,27 @@ it("abre o formulário de login quando não há sessão salva", async () => {
   expect(document.querySelector(".login-card")).not.toBeNull();
   expect(api.rpc).not.toHaveBeenCalled();
 });
+it.each(["", "319999", "20987654321"])("abre a agenda com contato ausente ou inválido (%s)", async (whatsapp) => {
+  const savedOrders = await api.orders();
+  api.orders.mockResolvedValue(
+    savedOrders.map((order: { numero: number }) =>
+      order.numero === 13
+        ? order
+        : { ...order, nome_cliente: "Cliente removido", whatsapp },
+    ),
+  );
+  await open();
+  expect(document.querySelector(".admin-shell")).not.toBeNull();
+  expect(document.querySelectorAll(".admin-order")).toHaveLength(3);
+  expect(document.querySelectorAll('a[href^="https://wa.me/"]')).toHaveLength(1);
+  const unavailable = [...document.querySelectorAll("button")].filter(
+    (button) => button.textContent?.trim() === "WhatsApp indisponível",
+  );
+  expect(unavailable).toHaveLength(2);
+  expect(unavailable.every((button) => button.disabled)).toBe(true);
+  expect(document.body.textContent).toContain("#18");
+  expect(document.body.textContent).toContain("Ver Pix");
+});
 it("mostra erro e login quando a consulta da sessão rejeita, sem deixar a tela carregando", async () => {
   api.getSession.mockRejectedValueOnce(new Error("Falha de rede"));
   await open();
