@@ -3,6 +3,21 @@ import autoTable from "jspdf-autotable";
 import type { Config, Pedido } from "./domain";
 import { addressText, dateBR, money, statuses } from "./domain";
 export type ReportKind = "producao" | "periodo" | "individual" | "receber";
+export function productionOrders(orders: Pedido[], includePending = false) {
+  return orders
+    .filter(
+      (p) =>
+        p.status === "confirmado" ||
+        (includePending &&
+          (p.status === "pendente" || p.status === "aguardando_confirmacao")),
+    )
+    .sort(
+      (a, b) =>
+        a.data_entrega.localeCompare(b.data_entrega) ||
+        a.horario.localeCompare(b.horario) ||
+        a.numero - b.numero,
+    );
+}
 export async function makeReport(
   kind: ReportKind,
   orders: Pedido[],
@@ -81,18 +96,7 @@ export async function makeReport(
     didDrawPage: head,
   };
   if (kind === "producao") {
-    const selected = orders
-      .filter(
-        (p) =>
-          p.status === "confirmado" ||
-          (includePending && p.status === "pendente"),
-      )
-      .sort(
-        (a, b) =>
-          a.data_entrega.localeCompare(b.data_entrega) ||
-          a.horario.localeCompare(b.horario) ||
-          a.numero - b.numero,
-      );
+    const selected = productionOrders(orders, includePending);
     const daily = new Map<string, Map<string, number>>();
     for (const p of selected) {
       const day = daily.get(p.data_entrega) || new Map<string, number>();

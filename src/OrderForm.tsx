@@ -33,6 +33,8 @@ import { normalizePixKey, pixPayload } from "./pix";
 import { copyText, safeUuid } from "./browser";
 import { couponDiscount } from "./coupons";
 import type { AppliedCoupon } from "./coupons";
+import TimePicker from "./TimePicker";
+import { isDeliveryTime, isTimeAvailable } from "./schedule";
 export function Pix({ pedido, config }: { pedido: Pedido; config: Config }) {
   const [qr, setQr] = useState<{
     payload: string;
@@ -409,7 +411,7 @@ export default function OrderForm({
     nome: "",
     whatsapp: "",
     data_entrega: "",
-    horario: "10:00",
+    horario: "",
     tipo: "retirada",
     ponto_referencia: "",
     observacoes: "",
@@ -562,14 +564,10 @@ export default function OrderForm({
         )
           throw new Error("Escolha uma data disponível.");
         if (!form.horario) throw new Error("Escolha um horário.");
-        if (!manual && form.data_entrega === today()) {
-          const now = new Date();
-          const [hh, mm] = form.horario.split(":").map(Number);
-          const selected = new Date(now);
-          selected.setHours(hh, mm, 0, 0);
-          if (selected.getTime() <= now.getTime())
-            throw new Error("Escolha um horário que ainda não passou.");
-        }
+        if (!isDeliveryTime(form.horario))
+          throw new Error("Escolha um horário em intervalos de 20 minutos.");
+        if (!isTimeAvailable(form.horario, form.data_entrega, manual))
+          throw new Error("Escolha um horário que ainda não passou.");
         if (
           form.tipo === "entrega" &&
           (!address.rua.trim() ||
@@ -591,6 +589,10 @@ export default function OrderForm({
     setBusy(true);
     setError("");
     try {
+      if (!isDeliveryTime(form.horario))
+        throw new Error("Escolha um horário em intervalos de 20 minutos.");
+      if (!isTimeAvailable(form.horario, form.data_entrega, manual))
+        throw new Error("Escolha um horário que ainda não passou.");
       if (!manual && !form.consentimento)
         throw new Error("Aceite o aviso de privacidade para enviar.");
       if (
@@ -767,14 +769,15 @@ export default function OrderForm({
                     ))}
                   </select>
                 </label>
-                <label>
-                  Horário
-                  <input
-                    type="time"
+                <div className="time-field">
+                  <span>Horário</span>
+                  <TimePicker
                     value={form.horario}
-                    onChange={(e) => set("horario", e.target.value)}
+                    date={form.data_entrega}
+                    manual={manual}
+                    onChange={(value) => set("horario", value)}
                   />
-                </label>
+                </div>
               </div>
               <fieldset>
                 <legend>Como prefere receber?</legend>

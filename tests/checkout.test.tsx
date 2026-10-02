@@ -171,6 +171,11 @@ beforeEach(async () => {
   await fill(inputFor("Nome completo"), "Cliente de teste");
   await fill(inputFor("WhatsApp com DDD"), "31990000001");
   await fill(inputFor("Data desejada"), addDays(today(), 1));
+  await click("Escolha um horário");
+  await click("18");
+  await act(async () => {
+    document.querySelector<HTMLButtonElement>('[aria-label="Minuto 20"]')!.click();
+  });
   await click("Continuar");
   await act(async () => {
     (document.querySelector(".consent input") as HTMLInputElement).click();

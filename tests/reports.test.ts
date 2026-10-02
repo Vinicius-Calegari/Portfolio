@@ -57,6 +57,7 @@ it("identifica cada pedido de produção pelo primeiro nome e destino, mantendo 
     { ...base, id: "retirada", numero: 203, nome_cliente: "Bia Pereira", tipo: "retirada", endereco: null },
     { ...base, id: "pendente", numero: 204, nome_cliente: "Carlos Andrade", status: "pendente" },
     { ...base, id: "cancelado", numero: 205, nome_cliente: "Diego Costa", status: "cancelado" },
+    { ...base, id: "aguardando", numero: 206, nome_cliente: "Elisa Lima", status: "aguardando_confirmacao" },
   ] as Pedido[];
   const doc = await makeReport("producao", orders, defaultConfig, false, logo);
   const text = (pdf: string) => [...pdf.matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)]
@@ -72,10 +73,12 @@ it("identifica cada pedido de produção pelo primeiro nome e destino, mantendo 
   expect(pdf).toContain("Casa dos fundos");
   expect(pdf).toContain("Portao verde");
   expect(pdf).toContain("Retirada no local");
-  for (const excluded of ["Silva", "Souza", "Pereira", "Carlos", "Diego"])
+  for (const excluded of ["Silva", "Souza", "Pereira", "Carlos", "Diego", "Elisa"])
     expect(pdf).not.toContain(excluded);
   const withPending = text((await makeReport("producao", orders, defaultConfig, true, logo)).output());
   expect(withPending).toContain("Carlos");
   expect(withPending).not.toContain("Andrade");
   expect(withPending).not.toContain("Diego");
+  expect(withPending).toContain("Elisa");
+  expect(withPending).not.toContain("Lima");
 });

@@ -4,3 +4,20 @@
 .coupon-box{margin-top:18px;padding:16px;border:1px solid var(--line);border-radius:14px;background:var(--bg)}.coupon-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:8px 0}.coupon-controls input{flex:1;min-width:150px;text-transform:uppercase}.coupon-controls .button{flex-shrink:0}.coupon-success{color:var(--green)}
 
 .pix-box .pix-amount{font-size:1.8rem;font-weight:800;color:var(--wine);margin:8px 0 16px}.pix-box img{display:block;width:min(280px,100%);height:auto;margin:16px auto}.pix-box label{text-align:left}.pix-box textarea{font-size:.85rem;overflow-wrap:anywhere}.pix-box>p{overflow-wrap:anywhere}
+
+.time-field{display:grid;gap:6px;font-weight:700;margin-bottom:13px;align-content:start}
+.time-picker{position:relative;font-weight:400}
+.time-trigger{display:flex;justify-content:space-between;align-items:center;width:100%;min-height:44px;padding:12px;border:1px solid #d8c5b4;border-radius:12px;background:#fff;color:var(--ink);cursor:pointer;font-variant-numeric:tabular-nums}
+.time-trigger:focus-visible{outline:3px solid #8b352430;border-color:var(--wine)}
+.time-trigger:disabled{opacity:.6;cursor:default}
+.time-popover{position:absolute;top:calc(100% + 8px);left:0;z-index:50;width:250px;max-width:calc(100vw - 44px);padding:12px;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 12px 30px #3a211a25}
+.time-popover-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.time-popover-head button{display:grid;place-items:center;border:0;border-radius:8px;background:transparent;color:var(--ink);width:32px;height:32px;cursor:pointer}
+.time-columns{display:grid;grid-template-columns:1fr 1fr;gap:10px;text-align:center}
+.time-columns>div>strong{display:block;font-size:.8rem;color:var(--muted);margin-bottom:6px}
+.time-hours,.time-minutes{height:210px;overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:4px;padding:3px}
+.time-columns button{flex-shrink:0;width:100%;min-height:38px;border:0;border-radius:8px;background:#faf6f1;color:var(--ink);cursor:pointer;font-variant-numeric:tabular-nums}
+.time-columns button[aria-pressed=true]{background:var(--wine);color:#fff;font-weight:800}
+.time-columns button:disabled{background:#f5f5f5;color:#aaa;cursor:default}
+.time-columns button:focus-visible,.time-popover-head button:focus-visible{outline:2px solid var(--wine);outline-offset:1px}
+.time-popover>small{display:block;margin-top:10px;color:var(--muted);text-align:center;font-size:.8rem}

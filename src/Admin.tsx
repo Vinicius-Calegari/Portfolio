@@ -35,7 +35,7 @@ import {
   waLink,
 } from "./domain";
 import { imageFileToWebp, safeUuid } from "./browser";
-import { downloadReport } from "./reports";
+import { downloadReport, productionOrders } from "./reports";
 import { Empty, ErrorBox, Spinner, useCatalog } from "./App";
 import OrderForm, { Pix } from "./OrderForm";
 import { normalizePixKey } from "./pix";
@@ -278,11 +278,16 @@ function ClientsView({clientes,setError,onSaved}:{clientes:Cliente[];setError:(e
   return !clientes.length?<Empty title="Nenhum cliente cadastrado"/>:<div className="client-grid">{clientes.map(c=><article className="panel client-card" key={c.id}><h3>{c.nome}</h3><p>{maskPhone(c.whatsapp)}</p><label className="check"><input type="checkbox" checked={c.fiado_liberado} onChange={e=>void update(c,{fiado_liberado:e.target.checked})}/> Fiado liberado</label><label>Observações<textarea defaultValue={c.observacoes} onBlur={e=>{if(e.target.value!==c.observacoes)void update(c,{observacoes:e.target.value})}}/></label><button className="danger-link" onClick={()=>void anonymize(c)}>Excluir dados pessoais</button></article>)}</div>;
 }
 
-function Reports({pedidos,config,setError}:{pedidos:Pedido[];config:Config;setError:(e:string)=>void}){
+export function Reports({pedidos,config,setError}:{pedidos:Pedido[];config:Config;setError:(e:string)=>void}){
   const [pending,setPending]=useState(false);
+  const selected = productionOrders(pedidos, pending);
+  const active = pedidos.filter((p) => p.status !== "cancelado");
+  const emptyReason = !pedidos.length ? "Ainda não há pedidos para a produção."
+    : !active.length ? "Todos os pedidos estão cancelados. Pedidos cancelados não entram na lista de produção."
+    : "Nenhum pedido confirmado. Confirme os pedidos na Agenda ou marque a opção para incluir pendentes e aguardando confirmação.";
   const run=(kind:"producao"|"periodo"|"individual"|"receber", list=pedidos)=>void downloadReport(kind,list,config,pending).catch(e=>setError(e.message));
   async function backup(){try{const r=await db.rpc("backup_admin",{p_exportar:true});if(r.error)throw r.error;download(`rosilene-backup-${today()}.json`,JSON.stringify(r.data,null,2),"application/json");}catch(e){setError(e instanceof Error?e.message:"Não foi possível exportar o backup.")}}
-  return <div className="panel report-panel"><h2>Relatórios e exportações</h2><label className="check"><input type="checkbox" checked={pending} onChange={e=>setPending(e.target.checked)}/> Incluir pendentes na lista de produção</label><div className="report-buttons"><button onClick={()=>run("producao")}><FileText/> Lista de produção · checklist</button><button onClick={()=>run("periodo")}><FileText/> Pedidos do período</button><button onClick={()=>run("receber")}><FileText/> Contas a receber</button><button onClick={()=>download(`pedidos-${today()}.csv`,csv(pedidos),"text/csv;charset=utf-8")}><Download/> Exportar CSV</button><button onClick={()=>void backup()}><Download/> Exportar backup JSON</button></div><p className="muted">O pedido individual pode ser impresso selecionando um pedido na agenda e usando o relatório por período como registro operacional.</p></div>;
+  return <div className="panel report-panel"><h2>Relatórios e exportações</h2><label className="check"><input type="checkbox" checked={pending} onChange={e=>setPending(e.target.checked)}/> Incluir pendentes e aguardando confirmação</label><p role="status"><strong>{selected.length}</strong> {selected.length === 1 ? "pedido selecionado" : "pedidos selecionados"} para produção.</p>{!selected.length && <p className="notice">{emptyReason}</p>}<p className="muted">O PDF inclui os totais, o checklist e cada pedido com primeiro nome, horário e endereço de entrega.</p><div className="report-buttons"><button disabled={!selected.length} onClick={()=>run("producao")}><FileText/> Lista de produção · checklist</button><button onClick={()=>run("periodo")}><FileText/> Pedidos do período</button><button onClick={()=>run("receber")}><FileText/> Contas a receber</button><button onClick={()=>download(`pedidos-${today()}.csv`,csv(pedidos),"text/csv;charset=utf-8")}><Download/> Exportar CSV</button><button onClick={()=>void backup()}><Download/> Exportar backup JSON</button></div><p className="muted">O pedido individual pode ser impresso selecionando um pedido na agenda e usando o relatório por período como registro operacional.</p></div>;
 }
 
 function ConfigView({config,setConfig,blocked,blockedDate,setBlockedDate,setError,onSaved}:{config:Config;setConfig:(c:Config)=>void;blocked:{data:string;motivo:string}[];blockedDate:string;setBlockedDate:(v:string)=>void;setError:(e:string)=>void;onSaved:()=>Promise<void>}){
