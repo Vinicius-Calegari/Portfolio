@@ -24,3 +24,58 @@ it("gera os quatro relatórios A4 com dados longos e quebra de página", async (
     await writeFile(`tmp/pdfs/qa-${kind}.pdf`, Buffer.from(doc.output("arraybuffer")));
   }
 });
+
+it("identifica cada pedido de produção pelo primeiro nome e destino, mantendo a seleção de status", async () => {
+  const logo = "data:image/jpeg;base64," + (await readFile("public/logo.jpg")).toString("base64");
+  const base = {
+    id: "producao",
+    numero: 201,
+    nome_cliente: "  Ana   Silva ",
+    data_entrega: "2026-10-10",
+    horario: "10:00:00",
+    tipo: "entrega",
+    status: "confirmado",
+    endereco: {
+      rua: "Rua Primavera",
+      numero: "10",
+      bairro: "Centro",
+      cidade: "Ferros",
+      uf: "MG",
+      cep: "35800-000",
+      complemento: "Casa dos fundos",
+    },
+    ponto_referencia: "Portao verde",
+    grupos_pedido: [{
+      ordem: 1,
+      tamanho_total: 100,
+      itens_pedido: [{ nome_produto: "Coxinha", quantidade: 100 }],
+    }],
+  } as Pedido;
+  const orders = [
+    base,
+    { ...base, id: "outra-ana", numero: 202, nome_cliente: "Ana Souza", endereco: { ...base.endereco!, rua: "Rua das Flores", numero: "20" } },
+    { ...base, id: "retirada", numero: 203, nome_cliente: "Bia Pereira", tipo: "retirada", endereco: null },
+    { ...base, id: "pendente", numero: 204, nome_cliente: "Carlos Andrade", status: "pendente" },
+    { ...base, id: "cancelado", numero: 205, nome_cliente: "Diego Costa", status: "cancelado" },
+  ] as Pedido[];
+  const doc = await makeReport("producao", orders, defaultConfig, false, logo);
+  const text = (pdf: string) => [...pdf.matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)]
+    .map((match) => match[1].replace(/\\([()\\])/g, "$1"))
+    .join(" ");
+  const pdf = text(doc.output());
+  expect(pdf.match(/\bAna\b/g)).toHaveLength(2);
+  expect(pdf).toContain("#201");
+  expect(pdf).toContain("#202");
+  expect(pdf).toContain("Bia");
+  expect(pdf).toContain("Rua Primavera, 10");
+  expect(pdf).toContain("Rua das Flores, 20");
+  expect(pdf).toContain("Casa dos fundos");
+  expect(pdf).toContain("Portao verde");
+  expect(pdf).toContain("Retirada no local");
+  for (const excluded of ["Silva", "Souza", "Pereira", "Carlos", "Diego"])
+    expect(pdf).not.toContain(excluded);
+  const withPending = text((await makeReport("producao", orders, defaultConfig, true, logo)).output());
+  expect(withPending).toContain("Carlos");
+  expect(withPending).not.toContain("Andrade");
+  expect(withPending).not.toContain("Diego");
+});

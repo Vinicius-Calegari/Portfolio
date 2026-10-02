@@ -81,12 +81,20 @@ export async function makeReport(
     didDrawPage: head,
   };
   if (kind === "producao") {
+    const selected = orders
+      .filter(
+        (p) =>
+          p.status === "confirmado" ||
+          (includePending && p.status === "pendente"),
+      )
+      .sort(
+        (a, b) =>
+          a.data_entrega.localeCompare(b.data_entrega) ||
+          a.horario.localeCompare(b.horario) ||
+          a.numero - b.numero,
+      );
     const daily = new Map<string, Map<string, number>>();
-    for (const p of orders.filter(
-      (p) =>
-        p.status === "confirmado" ||
-        (includePending && p.status === "pendente"),
-    )) {
+    for (const p of selected) {
       const day = daily.get(p.data_entrega) || new Map<string, number>();
       for (const g of p.grupos_pedido)
         for (const i of g.itens_pedido)
@@ -130,6 +138,75 @@ export async function makeReport(
         }
       },
     });
+    if (selected.length) {
+      let y =
+        (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable
+          .finalY + 12;
+      if (y > 240) {
+        doc.addPage();
+        y = 54;
+      }
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(13);
+      doc.setTextColor("#5F291D");
+      doc.text("Separação e entrega por pedido", 14, y);
+      autoTable(doc, {
+        ...base,
+        startY: y + 5,
+        head: [
+          [
+            "Data / hora",
+            "Pedido / cliente",
+            "Entrega / retirada",
+            "Salgados",
+            "Separado",
+          ],
+        ],
+        body: selected.map((p) => {
+          const name = p.nome_cliente.trim();
+          const firstName =
+            name === "Cliente removido"
+              ? name
+              : name.split(/\s+/)[0] || "Nome indisponível";
+          const destination =
+            p.tipo === "retirada"
+              ? "Retirada no local"
+              : `${addressText(p.endereco) || "Endereço indisponível"}${p.ponto_referencia ? `\nRef.: ${p.ponto_referencia}` : ""}`;
+          return [
+            `${dateBR(p.data_entrega)}\n${p.horario.slice(0, 5)}`,
+            `#${p.numero}\n${firstName}`,
+            destination,
+            p.grupos_pedido
+              .map(
+                (g, n) =>
+                  `Grupo ${n + 1}:\n${g.itens_pedido.map((i) => `${i.quantidade} ${i.nome_produto}`).join("\n")}`,
+              )
+              .join("\n"),
+            "",
+          ];
+        }),
+        columnStyles: {
+          0: { cellWidth: 25 },
+          1: { cellWidth: 29 },
+          2: { cellWidth: 60 },
+          3: { cellWidth: 46 },
+          4: { cellWidth: 22, halign: "center" },
+        },
+        didDrawCell: ({ section, column, cell }) => {
+          if (section === "body" && column.index === 4) {
+            const size = 4;
+            doc.setDrawColor("#666666");
+            doc.setLineWidth(0.25);
+            doc.rect(
+              cell.x + (cell.width - size) / 2,
+              cell.y + (cell.height - size) / 2,
+              size,
+              size,
+            );
+          }
+        },
+      });
+    }
   } else if (kind === "individual") {
     const selected = orders;
     selected.forEach((p, index) => {
