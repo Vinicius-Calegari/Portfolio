@@ -12,6 +12,7 @@
         const payload = JSON.parse(init.body);
         if ((payload.action === 'criar' || payload.action === 'manual') && payload.data) {
           payload.data.cupom_codigo = couponCode || '';
+          if (!String(payload.data.ponto_referencia || '').trim() || payload.data.ponto_referencia === 'Não informado') payload.data.ponto_referencia = '';
           init = { ...init, body: JSON.stringify(payload) };
         }
       }
@@ -37,10 +38,95 @@
   }
 
   function fixLogo() {
-    document.querySelectorAll('img[src="/logo.jpg"]').forEach((img) => {
-      img.src = '/logo-rosilene.svg';
+    document.querySelectorAll('.hero-image img').forEach((img) => {
+      const wanted = '/logo.jpg?v=20261002-2';
+      if (!img.src.includes('logo.jpg')) img.src = wanted;
       img.alt = 'Salgados e Massas Rosilene';
+      img.onerror = () => { img.onerror = null; img.src = '/logo-rosilene.svg?v=20261002-2'; };
     });
+  }
+
+  function reactSet(input, value) {
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+    if (setter) setter.call(input, value); else input.value = value;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  function makeReferenceOptional() {
+    if (!location.pathname.includes('/encomendar') && !location.pathname.includes('/painel')) return;
+    const inputs = [...document.querySelectorAll('input')];
+    const ref = inputs.find((i) => /Portão azul|referência/i.test(i.placeholder || '') || /ponto de referência/i.test(i.closest('label')?.textContent || ''));
+    if (!ref) return;
+    const label = ref.closest('label');
+    if (label && !/opcional/i.test(label.textContent || '')) {
+      for (const node of [...label.childNodes]) if (node.nodeType === Node.TEXT_NODE && /Ponto de referência/i.test(node.textContent || '')) node.textContent = 'Ponto de referência (opcional)';
+    }
+    const panel = ref.closest('.order-main');
+    if (panel && !panel.dataset.optionalReferenceHook) {
+      panel.dataset.optionalReferenceHook = '1';
+      panel.addEventListener('click', (e) => {
+        const btn = e.target.closest('button');
+        if (!btn || !/Continuar|Revisar|Avançar/i.test(btn.textContent || '')) return;
+        if (!ref.value.trim()) reactSet(ref, 'Não informado');
+      }, true);
+    }
+  }
+
+  function renameGroups() {
+    document.querySelectorAll('.group-tabs button').forEach((b) => {
+      if (/^Grupo\s+\d+/i.test(b.textContent || '')) b.textContent = (b.textContent || '').replace(/^Grupo/i, 'Pedido');
+    });
+    document.querySelectorAll('.group-progress span').forEach((s) => {
+      if (/Grupo completo/i.test(s.textContent || '')) {
+        for (const n of [...s.childNodes]) if (n.nodeType === Node.TEXT_NODE) n.textContent = (n.textContent || '').replace(/Grupo completo/gi, 'Pedido completo');
+      }
+    });
+    document.querySelectorAll('.admin-order .order-items p').forEach((p) => {
+      const b = p.querySelector('b');
+      if (b && /Grupo/i.test(b.textContent || '')) b.textContent = (b.textContent || '').replace(/Grupo/gi, 'Pedido');
+      [...p.childNodes].filter((n) => n.nodeType === Node.TEXT_NODE).forEach((n) => {
+        n.textContent = (n.textContent || '').replace(/(^|,\s*)\d+\s+(?=[^,]+)/g, '$1');
+      });
+    });
+  }
+
+  function addProductionChecklist() {
+    if (!location.pathname.startsWith('/painel')) return;
+    const buttons = [...document.querySelectorAll('.report-buttons button')];
+    const original = buttons.find((b) => /Lista de produção/i.test(b.textContent || ''));
+    if (!original || document.querySelector('[data-production-checklist]')) return;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.dataset.productionChecklist = '1';
+    btn.innerHTML = '☑ Lista de produção · checklist';
+    btn.addEventListener('click', () => {
+      const orders = [...document.querySelectorAll('.admin-order')];
+      const rows = new Map();
+      orders.forEach((order) => {
+        const status = order.querySelector('.status')?.textContent?.trim() || '';
+        if (/cancelado/i.test(status)) return;
+        const date = order.querySelector('.order-head p')?.textContent?.split(' às ')[0]?.trim() || '';
+        order.querySelectorAll('.order-items p').forEach((p) => {
+          const text = p.textContent?.replace(/^Pedido\s*\d+\s*:\s*/i, '') || '';
+          text.split(',').forEach((item) => {
+            const m = item.trim().match(/^(\d+)\s+(.+)$/);
+            if (!m) return;
+            const key = `${date}|${m[2]}`;
+            rows.set(key, (rows.get(key) || 0) + Number(m[1]));
+          });
+        });
+      });
+      const list = [...rows.entries()].sort(([a],[b]) => a.localeCompare(b, 'pt-BR')).map(([key, qty]) => {
+        const [date, name] = key.split('|');
+        return `<tr><td>${date}</td><td>${name}</td><td class="qty">${qty}</td><td class="box">☐ Feito</td><td class="box">☐ Separado</td></tr>`;
+      }).join('');
+      const w = window.open('', '_blank');
+      if (!w) return;
+      w.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Lista de produção</title><style>body{font-family:Arial,sans-serif;padding:28px;color:#222}header{display:flex;align-items:center;gap:16px;margin-bottom:22px}header img{width:72px;height:72px;object-fit:contain}h1{margin:0;font-size:24px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #aaa;padding:10px;text-align:left}th{background:#f1e6db}.qty{text-align:center;font-size:18px;font-weight:700}.box{white-space:nowrap;font-size:16px}@media print{button{display:none}}</style></head><body><header><img src="/logo.jpg?v=20261002-2"><div><h1>Lista de produção</h1><small>Salgados Rosilene</small></div></header><table><thead><tr><th>Data</th><th>Salgado</th><th>Unidades</th><th>Feito</th><th>Separado</th></tr></thead><tbody>${list || '<tr><td colspan="5">Nenhum pedido visível na agenda.</td></tr>'}</tbody></table><p><button onclick="window.print()">Imprimir / Salvar PDF</button></p></body></html>`);
+      w.document.close();
+    });
+    original.insertAdjacentElement('afterend', btn);
   }
 
   function addAdminCouponLink() {
@@ -61,25 +147,15 @@
     if (!main || main.querySelector('[data-coupon-box]')) return;
     const pageText = main.textContent || '';
     if (!/Revis|pagamento|resumo/i.test(pageText)) return;
-
     const box = document.createElement('section');
     box.dataset.couponBox = '1';
     box.style.cssText = 'margin-top:18px;padding:16px;border:1px solid #eadfd5;border-radius:14px;background:#fffaf6';
-    box.innerHTML = `
-      <strong style="display:block;margin-bottom:6px">Cupom de desconto <span style="font-weight:400;color:#777">(opcional)</span></strong>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <input data-coupon-input maxlength="40" placeholder="Digite seu cupom" style="flex:1;min-width:180px;text-transform:uppercase" />
-        <button type="button" data-coupon-apply>Aplicar</button>
-        <button type="button" data-coupon-remove style="display:none">Remover</button>
-      </div>
-      <small data-coupon-msg style="display:block;margin-top:8px"></small>`;
+    box.innerHTML = `<strong style="display:block;margin-bottom:6px">Cupom de desconto <span style="font-weight:400;color:#777">(opcional)</span></strong><div style="display:flex;gap:8px;flex-wrap:wrap"><input data-coupon-input maxlength="40" placeholder="Digite seu cupom" style="flex:1;min-width:180px;text-transform:uppercase" /><button type="button" data-coupon-apply>Aplicar</button><button type="button" data-coupon-remove style="display:none">Remover</button></div><small data-coupon-msg style="display:block;margin-top:8px"></small>`;
     main.appendChild(box);
-
     const input = box.querySelector('[data-coupon-input]');
     const apply = box.querySelector('[data-coupon-apply]');
     const remove = box.querySelector('[data-coupon-remove]');
     const msg = box.querySelector('[data-coupon-msg]');
-
     apply.addEventListener('click', async () => {
       const code = input.value.trim().toUpperCase();
       if (!code) { couponCode = ''; couponDiscount = 0; msg.textContent = 'Cupom é opcional. Você pode continuar sem preencher.'; return; }
@@ -92,16 +168,13 @@
         couponDiscount = Number(result.desconto || 0);
         msg.textContent = couponDiscount > 0 ? `Cupom ${couponCode} aplicado: -${money(couponDiscount)}.` : 'Nenhum cupom aplicado.';
         msg.style.color = '#287a3d'; remove.style.display = ''; input.disabled = true;
-      } catch (e) {
-        couponCode = ''; couponDiscount = 0; msg.textContent = e.message || 'Cupom inválido.'; msg.style.color = '#a52a2a';
-      } finally { apply.disabled = false; }
+      } catch (e) { couponCode = ''; couponDiscount = 0; msg.textContent = e.message || 'Cupom inválido.'; msg.style.color = '#a52a2a'; }
+      finally { apply.disabled = false; }
     });
-    remove.addEventListener('click', () => {
-      couponCode = ''; couponDiscount = 0; input.value = ''; input.disabled = false; remove.style.display = 'none'; msg.textContent = 'Cupom removido. O pedido seguirá sem desconto.'; msg.style.color = '';
-    });
+    remove.addEventListener('click', () => { couponCode = ''; couponDiscount = 0; input.value = ''; input.disabled = false; remove.style.display = 'none'; msg.textContent = 'Cupom removido. O pedido seguirá sem desconto.'; msg.style.color = ''; });
   }
 
-  const sync = () => { fixLogo(); addAdminCouponLink(); addCouponBox(); };
+  const sync = () => { fixLogo(); makeReferenceOptional(); renameGroups(); addProductionChecklist(); addAdminCouponLink(); addCouponBox(); };
   new MutationObserver(sync).observe(document.documentElement, { childList: true, subtree: true });
   document.addEventListener('DOMContentLoaded', sync);
   sync();
