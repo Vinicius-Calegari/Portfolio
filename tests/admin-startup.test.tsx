@@ -207,7 +207,7 @@ const productionButton = () =>
   )!;
 it("explica a seleção vazia e inclui pendentes e aguardando confirmação somente quando solicitado", async () => {
   await openReports();
-  expect(productionButton().disabled).toBe(true);
+  expect(productionButton().disabled).toBe(false);
   expect(document.body.textContent).toContain("Nenhum pedido confirmado");
   await act(async () =>
     document
@@ -226,7 +226,7 @@ it("explica a seleção vazia e inclui pendentes e aguardando confirmação some
     true,
   );
 });
-it("explica que todos os pedidos estão cancelados e não gera um PDF de produção vazio", async () => {
+it("explica que todos os pedidos estão cancelados e permite baixar o PDF de produção vazio", async () => {
   const saved = await api.orders();
   api.orders.mockResolvedValue(
     saved.map((p: object) => ({ ...p, status: "cancelado" })),
@@ -241,6 +241,11 @@ it("explica que todos os pedidos estão cancelados e não gera um PDF de produç
       .click(),
   );
   await act(async () => productionButton().click());
-  expect(productionButton().disabled).toBe(true);
-  expect(downloadReport).not.toHaveBeenCalled();
+  expect(productionButton().disabled).toBe(false);
+  expect(downloadReport).toHaveBeenCalledWith(
+    "producao",
+    expect.any(Array),
+    expect.any(Object),
+    true,
+  );
 });
