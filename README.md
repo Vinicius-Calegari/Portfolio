@@ -1,9 +1,9 @@
 # Salgados Rosilene
 
-Sistema de encomendas em **React + TypeScript + Vite**, com backend no **Supabase** (Postgres, Auth, Storage e Edge Functions) e deploy no **Railway**.
+Sistema de encomendas em **React + TypeScript + Vite**, com backend no **Supabase** (Postgres, Auth, Storage e Edge Functions) e deploy estático no **Render**.
 
-- **Produção:** https://salgados-rosilene-production.up.railway.app
-- **Painel:** https://salgados-rosilene-production.up.railway.app/painel
+- **Produção:** https://portfolio-j8k2.onrender.com
+- **Painel:** https://portfolio-j8k2.onrender.com/painel
 - **Código:** branch `salgados-rosilene` deste repositório
 
 ## Estado do projeto
@@ -71,14 +71,15 @@ O público não possui acesso direto a clientes e pedidos. O servidor recalcula 
 
 ## Produção
 
-O Railway usa:
+O frontend está publicado no **Render Static Site**, com o serviço atualmente chamado `Portfolio` (apesar de conter o sistema Salgados Rosilene).
 
 ```text
-npm install && npm run build
-npx vite preview --host 0.0.0.0 --port $PORT
+Branch: salgados-rosilene
+Build: npm ci && npm run build
+Publicação: dist
 ```
 
-O serviço possui healthcheck em `/` e variáveis do Supabase configuradas na plataforma.
+As variáveis públicas `VITE_SUPABASE_*` ficam configuradas no serviço Render. O backend, autenticação e dados permanecem no Supabase. O endereço `/painel` utiliza a mesma hospedagem estática.
 
 ## Compatibilidade
 
